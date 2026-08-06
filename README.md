@@ -20,3 +20,5 @@ does not require the dataset at runtime.
 To retrain: run the notebooks in order.
 
 ## Run the app
+- pip install -r requirements.txt
+- streamlit run app.py
