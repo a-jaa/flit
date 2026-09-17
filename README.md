@@ -1,4 +1,6 @@
-# Credit Risk Assistant
+# flit.ai
+
+Credit Risk Assistant built to improve financial literacy across all demographics.
 
 A machine learning application that predicts the probability of a borrower defaulting on a loan using financial and credit profile data. Built on a LightGBM model trained on over 89,000 LendingClub loans, it provides instant risk assessments to improve financial literacy for those navigating important credit decisions.
 
