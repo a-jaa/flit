@@ -1,7 +1,5 @@
-streamlit
+fastapi
 lightgbm
-shap
 pandas
-numpy
-matplotlib
-scikit-learn
+pydantic
+uvicorn

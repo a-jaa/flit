@@ -1,0 +1,34 @@
+{
+  "model": "LightGBM",
+  "features": [
+    "loan_amnt",
+    "int_rate",
+    "installment",
+    "annual_inc",
+    "dti",
+    "fico_range_low",
+    "fico_range_high",
+    "revol_util",
+    "revol_bal",
+    "open_acc",
+    "total_acc",
+    "pub_rec",
+    "emp_length",
+    "grade",
+    "sub_grade",
+    "delinq_2yrs",
+    "inq_last_6mths",
+    "mort_acc",
+    "pub_rec_bankruptcies",
+    "total_rev_hi_lim",
+    "avg_cur_bal",
+    "bc_util",
+    "pct_tl_nvr_dlq",
+    "num_actv_bc_tl",
+    "num_actv_rev_tl"
+  ],
+  "threshold": 0.45,
+  "test_metrics": {
+    "auc_roc": 0.7111
+  }
+}

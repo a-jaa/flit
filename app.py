@@ -1,108 +1,180 @@
-import streamlit as st
+from pathlib import Path
+import json
+
 import lightgbm as lgb
 import pandas as pd
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
-st.set_page_config(page_title="Credit Risk Assistant", layout="centered")
+BASE = Path(__file__).resolve().parent
+MODEL_PATH = BASE / "credit_risk_model.lgb"
+METADATA_PATH = BASE / "credit_risk_model_metadata.json"
+HTML_PATH = BASE / "static" / "index.html"
 
-@st.cache_resource
-def load_model():
-    return lgb.Booster(model_file="credit_risk_model.lgb")
+app = FastAPI(title="Credit Risk Assistant")
 
-model = load_model()
+
+def require_file(path: Path, label: str):
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Missing {label}: {path.name}. "
+            f"Place {path.name} in the same folder as app.py."
+        )
+
+
+require_file(MODEL_PATH, "model")
+require_file(METADATA_PATH, "model metadata")
+require_file(HTML_PATH, "website")
+
+with METADATA_PATH.open("r", encoding="utf-8") as f:
+    metadata = json.load(f)
+
+model = lgb.Booster(model_file=str(MODEL_PATH))
+
+FEATURES = metadata.get("features")
+THRESHOLD = float(metadata.get("threshold"))
+
+if not FEATURES or not isinstance(FEATURES, list):
+    raise ValueError("credit_risk_model_metadata.json does not contain a valid 'features' list.")
 
 GRADE_MAP = {"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6, "G": 7}
 EMP_MAP = {
-    "< 1 year": 0, "1 year": 1, "2 years": 2, "3 years": 3,
-    "4 years": 4, "5 years": 5, "6 years": 6,
-    "7 years": 7, "8 years": 8, "9 years": 9, "10+ years": 10
+    "< 1 year": 0,
+    "1 year": 1,
+    "2 years": 2,
+    "3 years": 3,
+    "4 years": 4,
+    "5 years": 5,
+    "6 years": 6,
+    "7 years": 7,
+    "8 years": 8,
+    "9 years": 9,
+    "10+ years": 10,
 }
 
-def encode_sub_grade(sg):
-    letter = sg[0]
-    number = int(sg[1])
-    return (ord(letter) - ord("A")) * 5 + number
 
-st.title("Credit Risk Assistant")
-st.caption("Enter your loan and financial details to estimate default risk.")
+def encode_sub_grade(sg: str) -> int:
+    sg = sg.strip().upper()
+    if len(sg) < 2 or sg[0] not in GRADE_MAP:
+        raise ValueError("Invalid sub-grade.")
+    return (ord(sg[0]) - ord("A")) * 5 + int(sg[1:])
 
-st.subheader("Loan Details")
-col1, col2 = st.columns(2)
-with col1:
-    loan_amnt   = st.number_input("Loan amount ($)", min_value=500, max_value=40000, value=10000, step=500)
-    int_rate    = st.number_input("Interest rate (%)", min_value=1.0, max_value=35.0, value=12.0, step=0.1)
-    installment = st.number_input("Monthly installment ($)", min_value=10.0, max_value=2000.0, value=250.0, step=5.0)
-    grade       = st.selectbox("Loan grade", list(GRADE_MAP.keys()))
-with col2:
-    sub_grade  = st.selectbox("Sub-grade", [f"{g}{n}" for g in "ABCDEFG" for n in range(1, 6)])
-    emp_length = st.selectbox("Employment length", list(EMP_MAP.keys()))
-    annual_inc = st.number_input("Annual income ($)", min_value=0, max_value=500000, value=60000, step=1000)
-    dti        = st.number_input("Debt-to-income ratio (%)", min_value=0.0, max_value=100.0, value=15.0, step=0.1)
 
-st.subheader("Credit Profile")
-col3, col4 = st.columns(2)
-with col3:
-    fico_low   = st.number_input("FICO score (low)", min_value=300, max_value=850, value=680)
-    fico_high  = st.number_input("FICO score (high)", min_value=300, max_value=850, value=684)
-    revol_util = st.number_input("Revolving utilization (%)", min_value=0.0, max_value=150.0, value=40.0, step=0.1)
-    revol_bal  = st.number_input("Revolving balance ($)", min_value=0, max_value=500000, value=10000, step=500)
-    open_acc   = st.number_input("Open credit accounts", min_value=0, max_value=80, value=8)
-with col4:
-    total_acc      = st.number_input("Total credit accounts", min_value=0, max_value=150, value=20)
-    pub_rec        = st.number_input("Public records", min_value=0, max_value=20, value=0)
-    delinq_2yrs    = st.number_input("Delinquencies (last 2 yrs)", min_value=0, max_value=30, value=0)
-    inq_last_6mths = st.number_input("Credit inquiries (last 6 mo)", min_value=0, max_value=30, value=1)
-    mort_acc       = st.number_input("Mortgage accounts", min_value=0, max_value=30, value=0)
+class Applicant(BaseModel):
+    loan_amnt: float
+    int_rate: float
+    installment: float
+    grade: str
+    sub_grade: str
+    emp_length: str
+    annual_inc: float
+    dti: float
+    fico_range_low: int
+    fico_range_high: int
+    revol_util: float
+    revol_bal: float
+    open_acc: int
+    total_acc: int
+    pub_rec: int
+    delinq_2yrs: int
+    inq_last_6mths: int
+    mort_acc: int
+    pub_rec_bankruptcies: int
+    total_rev_hi_lim: float
+    avg_cur_bal: float
+    bc_util: float
+    pct_tl_nvr_dlq: float
+    num_actv_bc_tl: int
+    num_actv_rev_tl: int
 
-st.subheader("Additional Info")
-col5, col6 = st.columns(2)
-with col5:
-    pub_rec_bankruptcies = st.number_input("Public record bankruptcies", min_value=0, max_value=10, value=0)
-    total_rev_hi_lim     = st.number_input("Total revolving credit limit ($)", min_value=0, max_value=500000, value=30000, step=500)
-    avg_cur_bal          = st.number_input("Avg current balance ($)", min_value=0, max_value=500000, value=5000, step=500)
-with col6:
-    bc_util         = st.number_input("Bankcard utilization (%)", min_value=0.0, max_value=200.0, value=50.0, step=0.1)
-    pct_tl_nvr_dlq  = st.number_input("% accounts never delinquent", min_value=0.0, max_value=100.0, value=95.0, step=0.1)
-    num_actv_bc_tl  = st.number_input("Active bankcard accounts", min_value=0, max_value=30, value=3)
-    num_actv_rev_tl = st.number_input("Active revolving accounts", min_value=0, max_value=30, value=5)
 
-if st.button("Predict Risk", use_container_width=True):
-    features = pd.DataFrame([{
-        "loan_amnt":            loan_amnt,
-        "int_rate":             int_rate,
-        "installment":          installment,
-        "annual_inc":           annual_inc,
-        "dti":                  dti,
-        "fico_range_low":       fico_low,
-        "fico_range_high":      fico_high,
-        "revol_util":           revol_util,
-        "revol_bal":            revol_bal,
-        "open_acc":             open_acc,
-        "total_acc":            total_acc,
-        "pub_rec":              pub_rec,
-        "emp_length":           EMP_MAP[emp_length],
-        "grade":                GRADE_MAP[grade],
-        "sub_grade":            encode_sub_grade(sub_grade),
-        "delinq_2yrs":          delinq_2yrs,
-        "inq_last_6mths":       inq_last_6mths,
-        "mort_acc":             mort_acc,
-        "pub_rec_bankruptcies": pub_rec_bankruptcies,
-        "total_rev_hi_lim":     total_rev_hi_lim,
-        "avg_cur_bal":          avg_cur_bal,
-        "bc_util":              bc_util,
-        "pct_tl_nvr_dlq":       pct_tl_nvr_dlq,
-        "num_actv_bc_tl":       num_actv_bc_tl,
-        "num_actv_rev_tl":      num_actv_rev_tl,
-    }])
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return HTML_PATH.read_text(encoding="utf-8")
 
-    prob = model.predict(features)[0]
-    threshold = 0.45
 
-    st.divider()
-    if prob >= threshold:
-        st.error("**High Risk — Likely Default**")
-    else:
-        st.success("**Low Risk — Likely to Repay**")
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "model_loaded": True,
+        "threshold": THRESHOLD,
+        "feature_count": len(FEATURES),
+    }
 
-    st.metric("Default Probability", f"{prob:.1%}")
-    st.progress(float(prob))
-    st.caption("Threshold: 0.45 — scores above this are flagged as high risk.")
+
+@app.get("/model-info")
+def model_info():
+    metrics = metadata.get("test_metrics", {})
+    return {
+        "threshold": THRESHOLD,
+        "feature_count": len(FEATURES),
+        "model": metadata.get("model", "LightGBM"),
+        "auc_roc": metrics.get("auc_roc"),
+    }
+
+
+@app.post("/predict")
+def predict(a: Applicant):
+    try:
+        # Basic input validation. These constraints prevent obviously invalid
+        # combinations from being sent to the model.
+        if a.fico_range_high < a.fico_range_low:
+            raise ValueError("FICO high cannot be lower than FICO low.")
+        if a.loan_amnt <= 0:
+            raise ValueError("Loan amount must be greater than zero.")
+        if a.annual_inc < 0:
+            raise ValueError("Annual income cannot be negative.")
+
+        row = {
+            "loan_amnt": a.loan_amnt,
+            "int_rate": a.int_rate,
+            "installment": a.installment,
+            "annual_inc": a.annual_inc,
+            "dti": a.dti,
+            "fico_range_low": a.fico_range_low,
+            "fico_range_high": a.fico_range_high,
+            "revol_util": a.revol_util,
+            "revol_bal": a.revol_bal,
+            "open_acc": a.open_acc,
+            "total_acc": a.total_acc,
+            "pub_rec": a.pub_rec,
+            "emp_length": EMP_MAP[a.emp_length],
+            "grade": GRADE_MAP[a.grade],
+            "sub_grade": encode_sub_grade(a.sub_grade),
+            "delinq_2yrs": a.delinq_2yrs,
+            "inq_last_6mths": a.inq_last_6mths,
+            "mort_acc": a.mort_acc,
+            "pub_rec_bankruptcies": a.pub_rec_bankruptcies,
+            "total_rev_hi_lim": a.total_rev_hi_lim,
+            "avg_cur_bal": a.avg_cur_bal,
+            "bc_util": a.bc_util,
+            "pct_tl_nvr_dlq": a.pct_tl_nvr_dlq,
+            "num_actv_bc_tl": a.num_actv_bc_tl,
+            "num_actv_rev_tl": a.num_actv_rev_tl,
+        }
+
+        # Force EXACTLY the same feature order used when the corrected model
+        # was trained.
+        missing = [name for name in FEATURES if name not in row]
+        if missing:
+            raise ValueError(f"Missing model features: {missing}")
+
+        features = pd.DataFrame(
+            [[row[name] for name in FEATURES]],
+            columns=FEATURES,
+        )
+
+        probability = float(
+            model.predict(features, validate_features=True)[0]
+        )
+
+        return {
+            "probability": probability,
+            "threshold": THRESHOLD,
+            "risk": "Higher Risk" if probability >= THRESHOLD else "Lower Risk",
+        }
+
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc))

@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Credit Risk Assistant</title>
+<style>
+:root{
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --ink:#0a0a0a;
+  --muted:#667085;
+  --line:#e6eaf0;
+  --blue:#2f6bff;
+  --dark:#0b0f16;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 70% 8%, rgba(80,120,255,.10), transparent 30%),
+    linear-gradient(180deg,#fafcff 0%,#f4f7fb 100%);
+  color:var(--ink);
+  font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+button,input,select{font:inherit}
+.wrapper{max-width:1450px;margin:0 auto;padding:26px 44px 70px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:42px}
+.brand{display:flex;align-items:center;gap:14px;font-weight:800;font-size:17px}
+.brandmark{width:38px;height:38px;border-radius:10px;background:#0d1117;color:#fff;display:grid;place-items:center;font-size:12px}
+.topright{display:flex;gap:10px}
+.pill{background:rgba(255,255,255,.82);border:1px solid var(--line);border-radius:999px;padding:10px 14px;font-size:12px;font-weight:700;color:#273142}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#29d17d;margin-right:7px}
+
+.hero{
+  display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;
+  min-height:460px;margin-bottom:64px;
+}
+.heroCopy{padding-left:12px}
+.kicker{color:var(--blue);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:26px}
+h1{font-size:clamp(58px,6vw,92px);line-height:.93;letter-spacing:-.065em;margin:0 0 28px;max-width:780px}
+.heroCopy p{color:#5f6c81;font-size:20px;line-height:1.55;max-width:700px;margin:0 0 34px}
+.features{display:flex;gap:14px;flex-wrap:wrap}
+.feature{background:rgba(255,255,255,.62);border:1px solid rgba(90,110,145,.14);border-radius:16px;padding:13px 16px;font-size:13px;color:#25314a}
+
+.placeholderCard,
+.riskCard{
+  background:
+    radial-gradient(circle at 70% 15%, rgba(61,105,255,.12), transparent 35%),
+    linear-gradient(145deg,#0d1117,#111826);
+  color:white;border-radius:28px;padding:38px 40px;
+  min-height:360px;box-shadow:0 28px 65px rgba(6,14,28,.18);
+  border:1px solid rgba(255,255,255,.06);
+}
+.placeholderCard{
+  display:flex;flex-direction:column;justify-content:center;
+}
+.placeholderEyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#9ca6b5;margin-bottom:20px}
+.placeholderTitle{font-size:34px;line-height:1.08;letter-spacing:-.04em;margin:0 0 16px}
+.placeholderText{color:#aab3c0;line-height:1.55;font-size:15px;max-width:430px}
+.placeholderHint{margin-top:32px;border-top:1px solid rgba(255,255,255,.08);padding-top:18px;color:#6f7a8b;font-size:12px}
+
+.riskCard{display:none}
+.riskLabelTop{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:#a9b2c3;margin-bottom:22px}
+.riskScore{font-size:clamp(92px,9vw,148px);font-weight:300;letter-spacing:-.08em;line-height:.9}
+.riskName{font-size:24px;margin-top:18px}
+.bar{height:9px;background:#252b35;border-radius:99px;overflow:hidden;margin-top:28px}
+.fill{height:100%;width:0;background:linear-gradient(90deg,#2f6bff,#a8cbff);border-radius:99px;transition:width .35s ease}
+.scale{display:flex;justify-content:space-between;color:#aab3c0;font-size:11px;margin-top:9px}
+.cardDivider{height:1px;background:rgba(255,255,255,.08);margin:28px 0}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.metric small{display:block;color:#8d97a6;text-transform:uppercase;letter-spacing:.09em;font-size:10px;margin-bottom:9px}
+.metric strong{font-size:20px;color:#69a3ff;font-weight:500}
+
+.section{background:rgba(255,255,255,.72);border:1px solid rgba(90,110,145,.11);border-radius:28px;padding:38px;box-shadow:0 20px 60px rgba(16,24,40,.04)}
+.sectionHead{display:flex;justify-content:space-between;align-items:flex-start;gap:50px;margin-bottom:30px}
+.sectionHead h2{margin:0;font-size:42px;letter-spacing:-.05em}
+.sectionHead p{margin:0;color:var(--muted);max-width:520px;line-height:1.5;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 8px 25px rgba(16,24,40,.03)}
+.card.full{grid-column:1/-1}
+.cardHead{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.number{width:28px;height:28px;border-radius:9px;background:#edf3ff;color:#2f6bff;display:grid;place-items:center;font-size:12px;font-weight:800}
+.card h3{margin:0;font-size:18px}
+.cardSub{color:#8a94a6;font-size:12px;margin:0 0 22px 40px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:17px 18px}
+.card.full .fields{grid-template-columns:repeat(3,1fr)}
+.field{display:flex;flex-direction:column;gap:7px}
+label{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#6a7484;font-weight:800}
+input,select{width:100%;border:1px solid #e5e9f0;background:#fff;border-radius:11px;padding:12px 13px;outline:none;color:#101828}
+input:focus,select:focus{border-color:#8db2ff;box-shadow:0 0 0 3px rgba(47,107,255,.08)}
+
+.cta{margin-top:18px;background:linear-gradient(135deg,#0c1118,#111927);color:#fff;border-radius:22px;padding:24px 28px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.ctaTitle{font-size:22px;font-weight:750;margin-bottom:5px}
+.ctaText{color:#9ba5b3;font-size:13px}
+.cta button{border:0;border-radius:12px;background:linear-gradient(90deg,#2f6bff,#4f88ff);color:#fff;font-weight:800;padding:14px 24px;min-width:190px;cursor:pointer}
+.cta button:disabled{opacity:.55;cursor:default}
+.error{display:none;margin-top:16px;padding:14px 16px;border-radius:12px;background:#fff0f3;color:#b4233f;border:1px solid #ffd5de;font-size:13px}
+footer{text-align:center;color:#8a94a6;font-size:12px;padding:28px 0 0}
+
+@media(max-width:1050px){
+  .hero{grid-template-columns:1fr}
+  .heroCopy{padding-left:0}
+  .grid{grid-template-columns:1fr}
+  .card.full{grid-column:auto}
+  .card.full .fields{grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+  .wrapper{padding:18px 16px 50px}
+  .topbar{align-items:flex-start;gap:12px}
+  .topright{flex-direction:column}
+  .section{padding:22px}
+  .sectionHead{flex-direction:column;gap:14px}
+  .fields,.card.full .fields{grid-template-columns:1fr}
+  .cta{flex-direction:column;align-items:flex-start}
+  .cta button{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand"><div class="brandmark">CR</div>Credit Risk Assistant</div>
+    <div class="topright">
+      <div class="pill"><span class="dot"></span>Model online</div>
+      <div class="pill">AI4ALL · 14C</div>
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="heroCopy">
+      <div class="kicker">Machine learning decision support</div>
+      <h1>See risk.<br>Before it compounds.</h1>
+      <p>
+        A focused interface for exploring how borrower and credit characteristics
+        influence predicted loan-default risk.
+      </p>
+      <div class="features">
+        <div class="feature">LightGBM model</div>
+        <div class="feature">25 input signals</div>
+        <div class="feature"><span id="thresholdFeature">Validated decision threshold</span></div>
+      </div>
+    </div>
+
+    <div id="placeholderCard" class="placeholderCard">
+      <div class="placeholderEyebrow">Assessment result</div>
+      <h2 class="placeholderTitle">No assessment yet.</h2>
+      <div class="placeholderText">
+        Complete the applicant profile below and run the model to generate a credit-risk prediction.
+      </div>
+      <div class="placeholderHint">The result will appear here after the assessment is run.</div>
+    </div>
+
+    <div id="riskCard" class="riskCard">
+      <div class="riskLabelTop">Predicted default probability</div>
+      <div id="heroScore" class="riskScore">—</div>
+      <div id="heroRisk" class="riskName">—</div>
+      <div class="bar"><div id="heroFill" class="fill"></div></div>
+      <div class="scale"><span>0%</span><span id="thresholdScale">Validated threshold</span><span>100%</span></div>
+
+      <div class="cardDivider"></div>
+
+      <div class="metrics">
+        <div class="metric">
+          <small>Risk category</small>
+          <strong id="heroCategory">—</strong>
+        </div>
+        <div class="metric">
+          <small>Model status</small>
+          <strong>Complete</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="profile">
+    <div class="sectionHead">
+      <h2>Build the applicant profile</h2>
+      <p>
+        Enter the variables used by the trained model. The interface keeps the
+        technical complexity behind the scenes and puts the assessment first.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="cardHead"><div class="number">01</div><h3>Loan & borrower</h3></div>
+        <div class="cardSub">Requested terms and borrower capacity.</div>
+        <div class="fields">
+          <div class="field"><label>Loan amount ($)</label><input id="loan_amnt" type="number" min="500" max="40000" step="500" value="10000"></div>
+          <div class="field"><label>Interest rate (%)</label><input id="int_rate" type="number" min="1" max="35" step="0.1" value="12"></div>
+          <div class="field"><label>Monthly installment ($)</label><input id="installment" type="number" min="0" max="2000" step="5" value="250"></div>
+          <div class="field"><label>Loan grade</label><select id="grade"></select></div>
+          <div class="field"><label>Sub-grade</label><select id="sub_grade"></select></div>
+          <div class="field"><label>Employment length</label><select id="emp_length"></select></div>
+          <div class="field"><label>Annual income ($)</label><input id="annual_inc" type="number" min="0" max="1000000" step="1000" value="60000"></div>
+          <div class="field"><label>Debt-to-income (%)</label><input id="dti" type="number" min="0" max="100" step="0.1" value="15"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardHead"><div class="number">02</div><h3>Credit profile</h3></div>
+        <div class="cardSub">Scores, utilization, account history, and recent activity.</div>
+        <div class="fields">
+          <div class="field"><label>FICO score (low)</label><input id="fico_range_low" type="number" min="300" max="845" step="5" value="680"></div>
+          <div class="field"><label>FICO score (high)</label><input id="fico_range_high" type="number" min="304" max="850" step="5" value="684" readonly></div>
+          <div class="field"><label>Revolving utilization (%)</label><input id="revol_util" type="number" min="0" max="150" step="0.1" value="40"></div>
+          <div class="field"><label>Revolving balance ($)</label><input id="revol_bal" type="number" value="10000"></div>
+          <div class="field"><label>Open accounts</label><input id="open_acc" type="number" value="8"></div>
+          <div class="field"><label>Total accounts</label><input id="total_acc" type="number" value="20"></div>
+          <div class="field"><label>Public records</label><input id="pub_rec" type="number" min="0" max="20" value="0"></div>
+          <div class="field"><label>Delinquencies · 2 yrs</label><input id="delinq_2yrs" type="number" min="0" max="30" value="0"></div>
+          <div class="field"><label>Inquiries · 6 mo</label><input id="inq_last_6mths" type="number" min="0" max="30" value="1"></div>
+          <div class="field"><label>Mortgage accounts</label><input id="mort_acc" type="number" min="0" max="50" value="0"></div>
+        </div>
+      </div>
+
+      <div class="card full">
+        <div class="cardHead"><div class="number">03</div><h3>Additional signals</h3></div>
+        <div class="cardSub">Supporting indicators used by the trained model.</div>
+        <div class="fields">
+          <div class="field"><label>Public bankruptcies</label><input id="pub_rec_bankruptcies" type="number" min="0" max="10" value="0"></div>
+          <div class="field"><label>Total revolving limit ($)</label><input id="total_rev_hi_lim" type="number" value="30000"></div>
+          <div class="field"><label>% never delinquent</label><input id="pct_tl_nvr_dlq" type="number" min="0" max="100" step="0.1" value="95"></div>
+          <div class="field"><label>Average current balance ($)</label><input id="avg_cur_bal" type="number" value="5000"></div>
+          <div class="field"><label>Bankcard utilization (%)</label><input id="bc_util" type="number" min="0" max="200" step="0.1" value="50"></div>
+          <div class="field"><label>Active revolving accounts</label><input id="num_actv_rev_tl" type="number" value="5"></div>
+          <div class="field"><label>Active bankcard accounts</label><input id="num_actv_bc_tl" type="number" value="3"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta">
+      <div>
+        <div class="ctaTitle">Ready to assess?</div>
+        <div class="ctaText">Run the model and turn the applicant profile into one clear risk signal.</div>
+      </div>
+      <button id="bottomBtn" onclick="runAssessment()">Run assessment →</button>
+    </div>
+
+    <div id="error" class="error"></div>
+    <footer>This is a model output for demonstration and educational purposes only.</footer>
+  </section>
+</div>
+
+<script>
+const grades = "ABCDEFG".split("");
+const emp = ["< 1 year","1 year","2 years","3 years","4 years","5 years","6 years","7 years","8 years","9 years","10+ years"];
+
+const gradeSel = document.getElementById("grade");
+grades.forEach(v => gradeSel.add(new Option(v,v)));
+
+const subSel = document.getElementById("sub_grade");
+grades.forEach(g => [1,2,3,4,5].forEach(n => subSel.add(new Option(`${g}${n}`,`${g}${n}`))));
+
+const empSel = document.getElementById("emp_length");
+emp.forEach(v => empSel.add(new Option(v,v)));
+
+const numeric = [
+  "loan_amnt","int_rate","installment","annual_inc","dti",
+  "fico_range_low","fico_range_high","revol_util","revol_bal","open_acc",
+  "total_acc","pub_rec","delinq_2yrs","inq_last_6mths","mort_acc",
+  "pub_rec_bankruptcies","total_rev_hi_lim","avg_cur_bal","bc_util",
+  "pct_tl_nvr_dlq","num_actv_bc_tl","num_actv_rev_tl"
+];
+
+function payload(){
+  const p = {};
+  numeric.forEach(id => p[id] = Number(document.getElementById(id).value));
+  p.grade = gradeSel.value;
+  p.sub_grade = subSel.value;
+  p.emp_length = empSel.value;
+  return p;
+}
+
+function showResult(probability, risk){
+  const pct = Math.max(0, Math.min(100, probability * 100));
+  const rounded = Math.round(pct);
+  document.getElementById("heroScore").textContent = rounded + "%";
+  document.getElementById("heroRisk").textContent = risk === "Higher Risk" ? "Higher risk" : "Lower risk";
+  document.getElementById("heroCategory").textContent = risk;
+  document.getElementById("heroFill").style.width = pct + "%";
+  document.getElementById("placeholderCard").style.display = "none";
+  document.getElementById("riskCard").style.display = "block";
+}
+
+
+async function loadModelInfo(){
+  try{
+    const r = await fetch("/model-info");
+    if(!r.ok) return;
+    const info = await r.json();
+    const pct = Math.round(Number(info.threshold) * 100);
+    document.getElementById("thresholdFeature").textContent = pct + "% validated decision threshold";
+    document.getElementById("thresholdScale").textContent = "Threshold " + pct + "%";
+  }catch(e){
+    console.warn("Could not load model metadata", e);
+  }
+}
+
+// LendingClub FICO range fields represent a narrow range.
+// Keep high score synchronized with low score.
+const ficoLow = document.getElementById("fico_range_low");
+const ficoHigh = document.getElementById("fico_range_high");
+function syncFicoRange(){
+  const low = Number(ficoLow.value);
+  ficoHigh.value = Math.min(850, low + 4);
+}
+ficoLow.addEventListener("input", syncFicoRange);
+syncFicoRange();
+
+loadModelInfo();
+
+async function runAssessment(){
+  const btn = document.getElementById("bottomBtn");
+  const err = document.getElementById("error");
+
+  btn.disabled = true;
+  btn.textContent = "Running…";
+  err.style.display = "none";
+
+  try{
+    const r = await fetch("/predict",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload())
+    });
+
+    if(!r.ok) throw new Error(await r.text());
+
+    const data = await r.json();
+    showResult(data.probability, data.risk);
+    window.scrollTo({top:0,behavior:"smooth"});
+  }catch(e){
+    err.textContent = "Prediction failed: " + (e?.message || "Unknown error");
+    err.style.display = "block";
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Run assessment →";
+  }
+}
+</script>
+</body>
+</html>
