@@ -88,12 +88,7 @@ credit-risk-assistant/
 
 ## Run the App
 
-```bash
-pip install -r requirements.txt
-uvicorn app:app --reload
-```
-
-Then open http://127.0.0.1:8000 in your browser.
+https://flit-ai.onrender.com/
 
 ---
 
