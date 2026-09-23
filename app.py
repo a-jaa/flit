@@ -3,6 +3,8 @@ import json
 
 import lightgbm as lgb
 import pandas as pd
+import numpy as np
+import shap
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -31,6 +33,7 @@ with METADATA_PATH.open("r", encoding="utf-8") as f:
     metadata = json.load(f)
 
 model = lgb.Booster(model_file=str(MODEL_PATH))
+explainer = shap.TreeExplainer(model)
 
 FEATURES = metadata.get("features")
 THRESHOLD = float(metadata.get("threshold"))
@@ -166,14 +169,22 @@ def predict(a: Applicant):
             columns=FEATURES,
         )
 
-        probability = float(
-            model.predict(features, validate_features=True)[0]
-        )
+        probability = float(model.predict(features, validate_features=True)[0])
+
+        shap_values = explainer.shap_values(features)
+        sv = shap_values[0].tolist()
+
+        factors = sorted(
+            [{"feature": FEATURES[i], "shap": sv[i], "value": float(features.iloc[0, i])} for i in range(len(FEATURES))],
+            key=lambda x: abs(x["shap"]),
+            reverse=True
+        )[:5]
 
         return {
             "probability": probability,
             "threshold": THRESHOLD,
             "risk": "Higher Risk" if probability >= THRESHOLD else "Lower Risk",
+            "factors": factors,
         }
 
     except (KeyError, ValueError) as exc:

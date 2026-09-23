@@ -3,3 +3,4 @@ lightgbm
 pandas
 pydantic
 uvicorn
+shap
