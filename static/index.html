@@ -116,6 +116,14 @@ footer{text-align:center;color:#8a94a6;font-size:12px;padding:28px 0 0}
   .cta{flex-direction:column;align-items:flex-start}
   .cta button{width:100%}
 }
+.xai{margin-top:28px;display:none}
+.xaiTitle{font-size:13px;font-weight:700;color:#a9b2c3;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
+.factor{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:14px}
+.factor:last-child{border-bottom:none}
+.factorName{color:#d0d8e8}
+.factorBar{height:6px;border-radius:99px;min-width:4px;max-width:120px}
+.up{background:#ff6b6b}
+.down{background:#29d17d}
 </style>
 </head>
 <body>
@@ -170,6 +178,11 @@ footer{text-align:center;color:#8a94a6;font-size:12px;padding:28px 0 0}
           <small>Model status</small>
           <strong>Complete</strong>
         </div>
+      </div>
+
+      <div id="xaiPanel" class="xai">
+        <div class="xaiTitle">Top factors driving this prediction</div>
+        <div id="factorList"></div>
       </div>
     </div>
   </section>
@@ -274,7 +287,40 @@ function payload(){
   return p;
 }
 
-function showResult(probability, risk){
+const FEATURE_DIRECTION = {
+  // higher = more risk (red is bad)
+  loan_amnt:            { label: "Loan amount",              high: "Too large" },
+  int_rate:             { label: "Interest rate",            high: "Too high" },
+  installment:          { label: "Monthly installment",      high: "Too high" },
+  dti:                  { label: "Debt-to-income ratio",     high: "Too high" },
+  revol_util:           { label: "Revolving utilization",    high: "Too high" },
+  revol_bal:            { label: "Revolving balance",        high: "Too high" },
+  open_acc:             { label: "Open accounts",            high: "Too many" },
+  pub_rec:              { label: "Public records",           high: "Too many" },
+  delinq_2yrs:          { label: "Delinquencies (2yr)",      high: "Too many" },
+  inq_last_6mths:       { label: "Recent inquiries",         high: "Too many" },
+  pub_rec_bankruptcies: { label: "Bankruptcies",             high: "Too many" },
+  bc_util:              { label: "Bankcard utilization",     high: "Too high" },
+  num_actv_bc_tl:       { label: "Active bankcards",         high: "Too many" },
+  num_actv_rev_tl:      { label: "Active revolving accounts",high: "Too many" },
+
+  // higher = less risk (red means value is surprisingly low)
+  annual_inc:           { label: "Annual income",            high: "Good" },
+  fico_range_low:       { label: "FICO score",               high: "Good" },
+  fico_range_high:      { label: "FICO score (high)",        high: "Good" },
+  pct_tl_nvr_dlq:       { label: "% never delinquent",       high: "Good" },
+  mort_acc:             { label: "Mortgage accounts",        high: "Good" },
+  total_acc:            { label: "Total accounts",           high: "Good" },
+  avg_cur_bal:          { label: "Avg current balance",      high: "Good" },
+  total_rev_hi_lim:     { label: "Revolving credit limit",   high: "Good" },
+
+  // neutral / context-dependent
+  grade:                { label: "Loan grade",               high: "Higher grade" },
+  sub_grade:            { label: "Loan sub-grade",           high: "Higher sub-grade" },
+  emp_length:           { label: "Employment length",        high: "Good" },
+};
+
+function showResult(probability, risk, factors){
   const pct = Math.max(0, Math.min(100, probability * 100));
   const rounded = Math.round(pct);
   document.getElementById("heroScore").textContent = rounded + "%";
@@ -283,6 +329,51 @@ function showResult(probability, risk){
   document.getElementById("heroFill").style.width = pct + "%";
   document.getElementById("placeholderCard").style.display = "none";
   document.getElementById("riskCard").style.display = "block";
+  showFactors(factors);
+}
+
+// For features where higher = better (annual_inc, fico, etc.)
+// red SHAP means the value is LOWER than average = concerning
+// green SHAP means the value is HIGHER than average = good
+const HIGHER_IS_BETTER = new Set([
+  "annual_inc", "fico_range_low", "fico_range_high", "pct_tl_nvr_dlq",
+  "mort_acc", "total_acc", "avg_cur_bal", "total_rev_hi_lim", "emp_length"
+]);
+
+function showFactors(factors) {
+  const panel = document.getElementById("xaiPanel");
+  const list = document.getElementById("factorList");
+
+  list.innerHTML = factors.map(f => {
+    const isUp = f.shap > 0;
+    const w = Math.min(120, Math.round(Math.abs(f.shap) * 800));
+    const meta = FEATURE_DIRECTION[f.feature] || { label: f.feature, high: "High" };
+
+    // if red (pushing risk up), the value is "too high" for risk-positive features,
+    // or "below average" for features where higher is normally better
+    let tag = HIGHER_IS_BETTER.has(f.feature)
+      ? (isUp ? "Below average" : "Good")
+      : (isUp ? meta.high : "Good");
+    let tagColor = isUp ? "#ff6b6b" : "#29d17d";
+
+    // Override income tag with real-world thresholds instead of SHAP direction,
+    // since SHAP sign reflects relative contribution, not the absolute value.
+    if (f.feature === "annual_inc") {
+      if (f.value > 100000)      { tag = "Good";          tagColor = "#29d17d"; }
+      else if (f.value > 50000)  { tag = "Average";       tagColor = "#f0a500"; }
+      else                       { tag = "Below average"; tagColor = "#ff6b6b"; }
+    }
+
+    return `<div class="factor">
+      <span class="factorName">${meta.label}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;color:${tagColor};font-weight:600">${tag}</span>
+        <div class="factorBar ${isUp ? 'up' : 'down'}" style="width:${w}px"></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  panel.style.display = "block";
 }
 
 
@@ -330,7 +421,7 @@ async function runAssessment(){
     if(!r.ok) throw new Error(await r.text());
 
     const data = await r.json();
-    showResult(data.probability, data.risk);
+    showResult(data.probability, data.risk, data.factors);
     window.scrollTo({top:0,behavior:"smooth"});
   }catch(e){
     err.textContent = "Prediction failed: " + (e?.message || "Unknown error");
